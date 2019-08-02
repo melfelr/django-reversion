@@ -12,3 +12,6 @@ MANIFEST
 docs/_build
 .coverage
 *.sqlite3
+
+# PyCharm
+.idea/

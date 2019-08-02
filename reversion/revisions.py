@@ -8,7 +8,7 @@ from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction, router
 from django.db.models.query import QuerySet
-from django.db.models.signals import post_save, m2m_changed
+from django.db.models.signals import post_save, pre_save, m2m_changed
 from django.utils.encoding import force_text
 from django.utils import timezone, six
 from reversion.errors import RevisionManagementError, RegistrationError
@@ -329,6 +329,14 @@ def _post_save_receiver(sender, instance, using, **kwargs):
         add_to_revision(instance, model_db=using)
 
 
+def registered_model_set_comment(sender, instance, **kwargs):
+    if instance._state.adding:
+        comment = 'Initial version'
+    else:
+        comment = 'Edit'
+    set_comment(comment)
+
+
 def _m2m_changed_receiver(instance, using, action, model, reverse, **kwargs):
     if action.startswith("post_") and not reverse:
         if is_registered(instance) and is_active() and not is_manage_manually():
@@ -351,6 +359,7 @@ def get_registered_models():
 
 
 def _get_senders_and_signals(model):
+    yield model, pre_save, registered_model_set_comment
     yield model, post_save, _post_save_receiver
     opts = model._meta.concrete_model._meta
     for field in opts.local_many_to_many:
